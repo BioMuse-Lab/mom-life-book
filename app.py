@@ -50,34 +50,37 @@ elif mode == "提交新内容":
         
         if submit:
             if not content_text and not uploaded_pic and not uploaded_audio:
-                st.warning("随便写点什么、传张照片或者录段音吧~")
+                st.warning("总得写点什么、传张照片或者录段音吧~")
             else:
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
                 file_name = f"{timestamp}_{title}.md"
                 file_path = f"content/{selected_folder}/{file_name}"
                 
-                # --- 处理图片保存 ---
+                # --- 1. 处理图片保存 (存入 assets/images) ---
                 img_markdown = ""
                 if uploaded_pic:
                     img_name = f"{timestamp}_{uploaded_pic.name}"
-                    img_path = f"assets/{img_name}"
-                    os.makedirs("assets", exist_ok=True)
+                    img_path = f"assets/images/{img_name}"
+                    # 确保文件夹存在
+                    os.makedirs("assets/images", exist_ok=True)
                     with open(img_path, "wb") as f:
                         f.write(uploaded_pic.getbuffer())
+                    # 在 Markdown 里引用的路径
                     img_markdown = f"\n\n![图片](../../{img_path})"
 
-                # --- 处理音频保存 ---
+                # --- 2. 处理音频保存 (存入 assets/audio) ---
                 audio_markdown = ""
                 if uploaded_audio:
                     audio_name = f"{timestamp}_{uploaded_audio.name}"
-                    audio_path = f"assets/{audio_name}"
-                    os.makedirs("assets", exist_ok=True)
+                    audio_path = f"assets/audio/{audio_name}"
+                    # 确保文件夹存在
+                    os.makedirs("assets/audio", exist_ok=True)
                     with open(audio_path, "wb") as f:
                         f.write(uploaded_audio.getbuffer())
-                    # 这里留一个播放器控件，你以后打开网页就能直接听方言
-                    audio_markdown = f"\n\n**方言原声录音：**\n\n<audio controls src='../../{audio_path}'></audio>"
+                    # 添加音频播放器控件
+                    audio_markdown = f"\n\n**原声录音：**\n\n<audio controls src='../../{audio_path}'></audio>"
 
-                # --- 写入 Markdown 文件 ---
+                # --- 3. 写入最终的 Markdown 文件 ---
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(f"### {title}\n\n")
                     f.write(f"*记录时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n")
@@ -85,6 +88,6 @@ elif mode == "提交新内容":
                     f.write(img_markdown)
                     f.write(audio_markdown)
                     if uploaded_audio:
-                        f.write("\n\n---\n*💡 注：这段方言待整理。*")
+                        f.write("\n\n---\n*💡 注：这段录音待整理。*")
 
-                st.success("提交成功！内容已存入后台，会立刻整理。")
+                st.success("提交成功！内容已存入后台数据。")
