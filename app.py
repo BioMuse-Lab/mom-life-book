@@ -5,7 +5,7 @@ from datetime import datetime
 st.set_page_config(page_title="妈妈的书", layout="wide")
 
 # --- 基础配置：确保文件夹存在 ---
-folders = ["阳台日记", "往事回响", "家味传承"]
+folders = ["冬日降临","儿童时代","她的少女时代","游荡时期","初入婚姻","阳台日记", "往事回响", "家味传承"]
 for f in folders:
     os.makedirs(f"content/{f}", exist_ok=True)
 
