@@ -15,8 +15,12 @@ mode = st.sidebar.radio("选择操作", ["阅读书籍", "提交新内容"])
 
 # --- 模式 1：阅读书籍 ---
 if mode == "阅读书籍":
-    category = st.sidebar.selectbox("选择章节", folders)
-    st.title(f"给妈妈的一本书：{category}")
+    st.sidebar.markdown("---")
+    # 将原来的 selectbox 换成 radio，章节就会全部平铺显示在左侧
+    category = st.sidebar.radio("📚 目录索引", folders)
+    
+    st.title(f"《给妈妈的一本书》")
+    st.caption(f"当前章节：{category}")
     
     path = f"content/{category}"
     files = sorted([f for f in os.listdir(path) if f.endswith('.md')], reverse=True)
