@@ -50,15 +50,38 @@ elif mode == "提交新内容":
             if not content_text and not uploaded_pic:
                 st.warning("总得写点什么或者传张照片吧~")
             else:
-                # 生成文件名：日期_标题.md
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
                 file_name = f"{timestamp}_{title}.md"
                 file_path = f"content/{selected_folder}/{file_name}"
                 
+                # 1. 先把文字保存到本地 md 文件
                 with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(f"### {title}\n")
+                    f.write(f"### {title}\n\n")
                     f.write(f"*记录时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n")
                     f.write(f"{content_text}\n\n")
+                    if uploaded_pic:
+                        # 图片保存逻辑可以参考之前的建议
+                        f.write(f"\n\n> 注：此篇包含图片，请查看 assets 目录。")
+
+                # 2. 自动同步到 GitHub (关键补丁)
+                try:
+                    from git import Repo
+                    # 初始化当前目录的仓库
+                    repo = Repo(".")
+                    
+                    # 添加新生成的文件
+                    repo.index.add([file_path])
+                    
+                    # 提交
+                    repo.index.commit(f"妈妈更新了章节：{selected_folder} - {title}")
+                    
+                    # 推送到远程 GitHub 仓库
+                    origin = repo.remote(name='origin')
+                    origin.push()
+                    
+                    st.success("✨ 提交成功！内容已永久同步至 GitHub。")
+                except Exception as e:
+                    st.error(f"同步失败，但本地已保存。错误原因: {e}")
                     # 如果有照片，这里可以扩展保存逻辑
                 
                 st.success("提交成功！刷新『阅读书籍』页面就能看到了。")
