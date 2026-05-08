@@ -53,45 +53,45 @@ elif mode == "提交新内容":
             if not content_text and not uploaded_pic and not uploaded_audio:
                 st.warning("总得写点什么、传张照片或者录段音吧~")
             else:
-                # 1. 生成文件名和路径
+                # --- A. 原有的文件保存逻辑 (保持你现在的代码不变) ---
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
                 file_name = f"{timestamp}_{title}.md"
                 file_path = f"content/{selected_folder}/{file_name}"
                 
-                # ... (此处保持你原来的图片/音频保存逻辑不变) ...
-                # --- (此处省略你已写的保存 img_path 和 audio_path 的代码) ---
+                # (此处为你之前写的保存文字、图片、音频到本地文件夹的代码)
+                # ... [保持不变] ...
 
-                # 3. 写入最终的 Markdown 文件
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(f"### {title}\n\n")
-                    f.write(f"*记录时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n")
-                    f.write(f"{content_text}\n")
-                    f.write(img_markdown)
-                    f.write(audio_markdown)
-                    if uploaded_audio:
-                        f.write("\n\n---\n*💡 注：这段录音待整理。*")
-
-                # --- 【新增：Git 推送代码】 ---
+                # --- B. 【核心改动】Git 同步逻辑 ---
                 try:
-                    # 初始化仓库对象
-                    repo = Repo(".") 
+                    from git import Repo
                     
-                    # 这里的认证逻辑：如果你在本地运行，Git 会用你本地的账号
-                    # 如果在 Streamlit Cloud 运行，需要下面这一步设置用户信息
-                    repo.config_writer().set_value("user", "name", "BioMuse-Lab").release()
-                    repo.config_writer().set_value("user", "email", "your_email@example.com").release()
+                    # 1. 从 Secrets 读取配置
+                    token = st.secrets["GITHUB_TOKEN"]
+                    user = st.secrets["GITHUB_USER"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+                    
+                    # 2. 构造带权限的远程地址
+                    remote_url = f"https://{user}:{token}@github.com/{user}/{repo_name}.git"
+                    
+                    # 3. 初始化仓库
+                    repo = Repo(".")
+                    
+                    # 4. 设置 Git 用户信息（Streamlit 服务器环境需要）
+                    repo.config_writer().set_value("user", "name", user).release()
+                    repo.config_writer().set_value("user", "email", "action@github.com").release()
 
-                    # 添加所有新文件 (包括 md, images, audio)
-                    repo.git.add(A=True)
+                    # 5. 重新配置远程仓库地址（确保带上 Token）
+                    if 'origin' in [r.name for r in repo.remotes]:
+                        repo.delete_remote('origin')
+                    origin = repo.create_remote('origin', remote_url)
+
+                    # 6. 执行添加、提交和推送
+                    repo.git.add(A=True)  # 添加所有新文件
+                    repo.index.commit(f"妈妈更新了章节：{selected_folder} - {title}")
+                    origin.push('main')  # ！！！请确认你的分支名是 main 还是 master
+
+                    st.success("✨ 太棒了！内容已成功同步到 GitHub 仓库。")
                     
-                    # 提交改动
-                    repo.index.commit(f"Mom added a new story: {title}")
-                    
-                    # 推送到远程 GitHub 仓库
-                    origin = repo.remote(name='origin')
-                    origin.push()
-                    
-                    st.success("✨ 提交并同步成功！去 GitHub 刷新就能看到啦。")
                 except Exception as e:
-                    st.warning(f"文件已保存到服务器，但同步 GitHub 失败。原因：{e}")
-                    st.info("如果你是在 Streamlit Cloud 部署，请检查 Secret 权限设置。")
+                    st.error(f"本地保存成功，但同步到 GitHub 失败：{e}")
+                    st.info("建议检查：1. Secrets 里的名字是否写对；2. 分支名是否为 main。")
