@@ -10,7 +10,7 @@ for f in folders:
     os.makedirs(f"content/{f}", exist_ok=True)
 
 # --- 侧边栏：功能切换 ---
-st.sidebar.title("📖 共创书书房")
+st.sidebar.title("📖 共创书房")
 mode = st.sidebar.radio("选择操作", ["阅读书籍", "提交新内容"])
 
 # --- 模式 1：阅读书籍 ---
@@ -36,52 +36,55 @@ if mode == "阅读书籍":
 # --- 模式 2：提交新内容（这是给妈妈用的接口） ---
 elif mode == "提交新内容":
     st.title("✍️ 记录今天的生活")
-    st.write("妈，你可以在这里选一个分类，写字或者传照片。")
+    st.write("可以在这里选一个分类，写字或者传照片。")
     
     with st.form("upload_form", clear_on_submit=True):
         selected_folder = st.selectbox("这篇内容属于：", folders)
         title = st.text_input("给这篇内容起个小标题（比如：今天的生菜）")
         content_text = st.text_area("想说的话（如果用语音输入法，直接点键盘上的话筒按钮说话就好）", height=200)
         uploaded_pic = st.file_uploader("传一张照片（可选）", type=['png', 'jpg', 'jpeg'])
+        # --- 新增语音上传接口 ---
+        uploaded_audio = st.file_uploader("录一段话发给我（可选）", type=['mp3', 'wav', 'm4a', 'aac'])
         
         submit = st.form_submit_button("提交到书里")
         
         if submit:
-            if not content_text and not uploaded_pic:
-                st.warning("总得写点什么或者传张照片吧~")
+            if not content_text and not uploaded_pic and not uploaded_audio:
+                st.warning("随便写点什么、传张照片或者录段音吧~")
             else:
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
                 file_name = f"{timestamp}_{title}.md"
                 file_path = f"content/{selected_folder}/{file_name}"
                 
-                # 1. 先把文字保存到本地 md 文件
+                # --- 处理图片保存 ---
+                img_markdown = ""
+                if uploaded_pic:
+                    img_name = f"{timestamp}_{uploaded_pic.name}"
+                    img_path = f"assets/{img_name}"
+                    os.makedirs("assets", exist_ok=True)
+                    with open(img_path, "wb") as f:
+                        f.write(uploaded_pic.getbuffer())
+                    img_markdown = f"\n\n![图片](../../{img_path})"
+
+                # --- 处理音频保存 ---
+                audio_markdown = ""
+                if uploaded_audio:
+                    audio_name = f"{timestamp}_{uploaded_audio.name}"
+                    audio_path = f"assets/{audio_name}"
+                    os.makedirs("assets", exist_ok=True)
+                    with open(audio_path, "wb") as f:
+                        f.write(uploaded_audio.getbuffer())
+                    # 这里留一个播放器控件，你以后打开网页就能直接听方言
+                    audio_markdown = f"\n\n**方言原声录音：**\n\n<audio controls src='../../{audio_path}'></audio>"
+
+                # --- 写入 Markdown 文件 ---
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(f"### {title}\n\n")
                     f.write(f"*记录时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n")
-                    f.write(f"{content_text}\n\n")
-                    if uploaded_pic:
-                        # 图片保存逻辑可以参考之前的建议
-                        f.write(f"\n\n> 注：此篇包含图片，请查看 assets 目录。")
+                    f.write(f"{content_text}\n")
+                    f.write(img_markdown)
+                    f.write(audio_markdown)
+                    if uploaded_audio:
+                        f.write("\n\n---\n*💡 注：这段方言待整理。*")
 
-                # 2. 自动同步到 GitHub (关键补丁)
-                try:
-                    from git import Repo
-                    # 初始化当前目录的仓库
-                    repo = Repo(".")
-                    
-                    # 添加新生成的文件
-                    repo.index.add([file_path])
-                    
-                    # 提交
-                    repo.index.commit(f"妈妈更新了章节：{selected_folder} - {title}")
-                    
-                    # 推送到远程 GitHub 仓库
-                    origin = repo.remote(name='origin')
-                    origin.push()
-                    
-                    st.success("✨ 提交成功！内容已永久同步至 GitHub。")
-                except Exception as e:
-                    st.error(f"同步失败，但本地已保存。错误原因: {e}")
-                    # 如果有照片，这里可以扩展保存逻辑
-                
-                st.success("提交成功！刷新『阅读书籍』页面就能看到了。")
+                st.success("提交成功！内容已存入后台，会立刻整理。")
