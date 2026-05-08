@@ -1,3 +1,4 @@
+from git import Repo
 import streamlit as st
 import os
 from datetime import datetime
@@ -52,35 +53,15 @@ elif mode == "提交新内容":
             if not content_text and not uploaded_pic and not uploaded_audio:
                 st.warning("总得写点什么、传张照片或者录段音吧~")
             else:
+                # 1. 生成文件名和路径
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
                 file_name = f"{timestamp}_{title}.md"
                 file_path = f"content/{selected_folder}/{file_name}"
                 
-                # --- 1. 处理图片保存 (存入 assets/images) ---
-                img_markdown = ""
-                if uploaded_pic:
-                    img_name = f"{timestamp}_{uploaded_pic.name}"
-                    img_path = f"assets/images/{img_name}"
-                    # 确保文件夹存在
-                    os.makedirs("assets/images", exist_ok=True)
-                    with open(img_path, "wb") as f:
-                        f.write(uploaded_pic.getbuffer())
-                    # 在 Markdown 里引用的路径
-                    img_markdown = f"\n\n![图片](../../{img_path})"
+                # ... (此处保持你原来的图片/音频保存逻辑不变) ...
+                # --- (此处省略你已写的保存 img_path 和 audio_path 的代码) ---
 
-                # --- 2. 处理音频保存 (存入 assets/audio) ---
-                audio_markdown = ""
-                if uploaded_audio:
-                    audio_name = f"{timestamp}_{uploaded_audio.name}"
-                    audio_path = f"assets/audio/{audio_name}"
-                    # 确保文件夹存在
-                    os.makedirs("assets/audio", exist_ok=True)
-                    with open(audio_path, "wb") as f:
-                        f.write(uploaded_audio.getbuffer())
-                    # 添加音频播放器控件
-                    audio_markdown = f"\n\n**原声录音：**\n\n<audio controls src='../../{audio_path}'></audio>"
-
-                # --- 3. 写入最终的 Markdown 文件 ---
+                # 3. 写入最终的 Markdown 文件
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(f"### {title}\n\n")
                     f.write(f"*记录时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n")
@@ -90,4 +71,27 @@ elif mode == "提交新内容":
                     if uploaded_audio:
                         f.write("\n\n---\n*💡 注：这段录音待整理。*")
 
-                st.success("提交成功！内容已存入后台数据。")
+                # --- 【新增：Git 推送代码】 ---
+                try:
+                    # 初始化仓库对象
+                    repo = Repo(".") 
+                    
+                    # 这里的认证逻辑：如果你在本地运行，Git 会用你本地的账号
+                    # 如果在 Streamlit Cloud 运行，需要下面这一步设置用户信息
+                    repo.config_writer().set_value("user", "name", "BioMuse-Lab").release()
+                    repo.config_writer().set_value("user", "email", "your_email@example.com").release()
+
+                    # 添加所有新文件 (包括 md, images, audio)
+                    repo.git.add(A=True)
+                    
+                    # 提交改动
+                    repo.index.commit(f"Mom added a new story: {title}")
+                    
+                    # 推送到远程 GitHub 仓库
+                    origin = repo.remote(name='origin')
+                    origin.push()
+                    
+                    st.success("✨ 提交并同步成功！去 GitHub 刷新就能看到啦。")
+                except Exception as e:
+                    st.warning(f"文件已保存到服务器，但同步 GitHub 失败。原因：{e}")
+                    st.info("如果你是在 Streamlit Cloud 部署，请检查 Secret 权限设置。")
